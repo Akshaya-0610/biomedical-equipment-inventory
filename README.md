@@ -1,2 +1,2 @@
-# biomedical-equipment-inventory
+# Biomedical-equipment-inventory
 A simple web application to manage biomedical equipment inventory and maintenance status.
