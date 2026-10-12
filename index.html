@@ -1,0 +1,200 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Biomedical Equipment Inventory</title>
+<style>
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #f1f5f9;
+  color: #183047;
+}
+header {
+  background: #075985;
+  color: white;
+  padding: 24px;
+}
+main { max-width: 1050px; margin: 25px auto; padding: 16px; }
+.panel {
+  background: white;
+  padding: 20px;
+  margin-bottom: 20px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px #0001;
+}
+form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 12px;
+}
+input, select, button {
+  box-sizing: border-box;
+  padding: 11px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font: inherit;
+  width: 100%;
+}
+button {
+  background: #0284c7;
+  color: white;
+  border: 0;
+  cursor: pointer;
+}
+button:hover { background: #0369a1; }
+table { width: 100%; border-collapse: collapse; }
+th, td {
+  padding: 12px;
+  border-bottom: 1px solid #e2e8f0;
+  text-align: left;
+}
+th { background: #e0f2fe; }
+.table-wrap { overflow-x: auto; }
+.status { font-weight: bold; }
+.delete { background: #dc2626; }
+.stats { display: flex; flex-wrap: wrap; gap: 12px; }
+.stat {
+  background: #e0f2fe;
+  padding: 16px;
+  border-radius: 8px;
+  flex: 1;
+  min-width: 120px;
+}
+small { color: #64748b; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Biomedical Equipment Inventory</h1>
+  <p>Equipment records and maintenance tracking</p>
+</header>
+<main>
+  <section class="panel">
+    <h2>Inventory Summary</h2>
+    <div class="stats">
+      <div class="stat">Total equipment: <strong id="total">0</strong></div>
+      <div class="stat">Maintenance due: <strong id="due">0</strong></div>
+      <div class="stat">Operational: <strong id="operational">0</strong></div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>Add Equipment</h2>
+    <form id="equipmentForm">
+      <input id="name" placeholder="Equipment name" required>
+      <input id="serial" placeholder="Serial number" required>
+      <label>Last service date
+        <input id="service" type="date" required>
+      </label>
+      <select id="status">
+        <option>Operational</option>
+        <option>Maintenance Due</option>
+        <option>Under Repair</option>
+      </select>
+      <button type="submit">Add Equipment</button>
+    </form>
+    <p><small>Demo project: records are stored in this browser only.</small></p>
+  </section>
+
+  <section class="panel">
+    <h2>Equipment Records</h2>
+    <input id="search" placeholder="Search equipment or serial number">
+    <br><br>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Equipment</th><th>Serial Number</th>
+            <th>Last Service</th><th>Status</th><th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="records"></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+<script>
+const form = document.getElementById("equipmentForm");
+const records = document.getElementById("records");
+const search = document.getElementById("search");
+let equipment = [];
+
+try {
+  equipment = JSON.parse(localStorage.getItem("biomedEquipment")) || [];
+} catch {
+  equipment = [];
+}
+
+function save() {
+  localStorage.setItem("biomedEquipment", JSON.stringify(equipment));
+  render();
+}
+
+function render() {
+  const query = search.value.toLowerCase();
+  const filtered = equipment.filter(e =>
+    e.name.toLowerCase().includes(query) ||
+    e.serial.toLowerCase().includes(query)
+  );
+
+  records.innerHTML = filtered.map(e => `
+    <tr>
+      <td>${escapeHTML(e.name)}</td>
+      <td>${escapeHTML(e.serial)}</td>
+      <td>${escapeHTML(e.service)}</td>
+      <td class="status">${escapeHTML(e.status)}</td>
+      <td><button class="delete" data-id="${e.id}">Delete</button></td>
+    </tr>
+  `).join("");
+
+  document.getElementById("total").textContent = equipment.length;
+  document.getElementById("due").textContent =
+    equipment.filter(e => e.status === "Maintenance Due" ||
+      e.status === "Under Repair").length;
+  document.getElementById("operational").textContent =
+    equipment.filter(e => e.status === "Operational").length;
+}
+
+function escapeHTML(value) {
+  return String(value).replace(/[&<>"']/g, ch => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;",
+    '"': "&quot;", "'": "&#39;"
+  })[ch]);
+}
+
+form.addEventListener("submit", event => {
+  event.preventDefault();
+  const serial = document.getElementById("serial").value.trim();
+
+  if (equipment.some(e => e.serial.toLowerCase() === serial.toLowerCase())) {
+    alert("This serial number already exists.");
+    return;
+  }
+
+  equipment.push({
+    id: crypto.randomUUID(),
+    name: document.getElementById("name").value.trim(),
+    serial,
+    service: document.getElementById("service").value,
+    status: document.getElementById("status").value
+  });
+
+  save();
+  form.reset();
+});
+
+records.addEventListener("click", event => {
+  const id = event.target.dataset.id;
+  if (!id) return;
+  equipment = equipment.filter(e => e.id !== id);
+  save();
+});
+
+search.addEventListener("input", render);
+render();
+</script>
+</body>
+</html>
